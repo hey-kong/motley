@@ -3,7 +3,7 @@ package motleyql
 // Query represents a parsed query
 type Query struct {
 	Type        Type
-	Fields      []string // Used for SELECT (i.e. SELECTed field names)
+	Fields      []string
 	ModelZoo    string
 	Task        string
 	Conditions  []Condition

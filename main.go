@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	query, err := motleyql.Parse("SELECT * FROM models WHERE e = '1' AND f > '2'")
+	query, err := motleyql.Parse("SELECT * FROM models For object_detection WHERE e = '1' AND f > '2'")
 	if err != nil {
 		log.Fatal(err)
 	}

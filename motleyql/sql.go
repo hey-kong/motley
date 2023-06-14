@@ -38,9 +38,11 @@ type step int
 const (
 	stepType step = iota
 	stepSelectField
-	stepSelectFrom
 	stepSelectComma
+	stepSelectFrom
 	stepSelectFromModelZoo
+	stepSelectFor
+	stepSelectForTask
 	stepWhere
 	stepWhereField
 	stepWhereOperator
@@ -87,9 +89,11 @@ func (p *parser) doParse() (Query, error) {
 			if !isIdentifierOrAsterisk(identifier) {
 				return p.query, fmt.Errorf("at SELECT: expected field to SELECT")
 			}
+			// TODO: handle '*'
 			p.query.Fields = append(p.query.Fields, identifier)
 			p.pop()
 			maybeFrom := p.peek()
+			// TODO: implement 'AS'
 			if strings.ToUpper(maybeFrom) == "AS" {
 				p.pop()
 				alias := p.peek()
@@ -124,6 +128,21 @@ func (p *parser) doParse() (Query, error) {
 				return p.query, fmt.Errorf("at SELECT: expected quoted model zoo name")
 			}
 			p.query.ModelZoo = zooName
+			p.pop()
+			p.step = stepSelectFor
+		case stepSelectFor:
+			forRWord := p.peek()
+			if strings.ToUpper(forRWord) != "FOR" {
+				return p.query, fmt.Errorf("at SELECT: expected FOR")
+			}
+			p.pop()
+			p.step = stepSelectForTask
+		case stepSelectForTask:
+			taskName := p.peek()
+			if len(taskName) == 0 {
+				return p.query, fmt.Errorf("at SELECT: expected quoted task name")
+			}
+			p.query.Task = taskName
 			p.pop()
 			p.step = stepWhere
 		case stepWhere:
