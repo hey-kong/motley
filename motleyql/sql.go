@@ -3,6 +3,7 @@ package motleyql
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -41,13 +42,21 @@ const (
 	stepSelectComma
 	stepSelectFrom
 	stepSelectFromModelZoo
-	stepSelectFor
-	stepSelectForTask
 	stepWhere
 	stepWhereField
 	stepWhereOperator
 	stepWhereValue
 	stepWhereAnd
+	stepOrder
+	stepBy
+	stepOrderByField
+	stepLimit
+	stepCount
+	stepUsing
+	stepData
+	stepRespond
+	stepIn
+	stepMode
 )
 
 type parser struct {
@@ -129,21 +138,11 @@ func (p *parser) doParse() (Query, error) {
 			}
 			p.query.ModelZoo = zooName
 			p.pop()
-			p.step = stepSelectFor
-		case stepSelectFor:
-			forRWord := p.peek()
-			if strings.ToUpper(forRWord) != "FOR" {
-				return p.query, fmt.Errorf("at SELECT: expected FOR")
+			next := p.peek()
+			if strings.ToUpper(next) == "ORDER" {
+				p.step = stepOrder
+				continue
 			}
-			p.pop()
-			p.step = stepSelectForTask
-		case stepSelectForTask:
-			taskName := p.peek()
-			if len(taskName) == 0 {
-				return p.query, fmt.Errorf("at SELECT: expected quoted task name")
-			}
-			p.query.Task = taskName
-			p.pop()
 			p.step = stepWhere
 		case stepWhere:
 			whereRWord := p.peek()
@@ -198,6 +197,15 @@ func (p *parser) doParse() (Query, error) {
 			}
 			p.query.Conditions[len(p.query.Conditions)-1] = currentCondition
 			p.pop()
+			next := p.peek()
+			if strings.ToUpper(next) == "ORDER" {
+				p.step = stepOrder
+				continue
+			}
+			if strings.ToUpper(next) == "USING" {
+				p.step = stepUsing
+				continue
+			}
 			p.step = stepWhereAnd
 		case stepWhereAnd:
 			andRWord := p.peek()
@@ -206,7 +214,96 @@ func (p *parser) doParse() (Query, error) {
 			}
 			p.pop()
 			p.step = stepWhereField
-
+		case stepOrder:
+			orderRWord := p.peek()
+			if strings.ToUpper(orderRWord) != "ORDER" {
+				return p.query, fmt.Errorf("expected ORDER")
+			}
+			p.pop()
+			p.step = stepBy
+		case stepBy:
+			byRWord := p.peek()
+			if strings.ToUpper(byRWord) != "BY" {
+				return p.query, fmt.Errorf("expected BY")
+			}
+			p.pop()
+			p.step = stepOrderByField
+		case stepOrderByField:
+			identifier := p.peek()
+			if !isIdentifier(identifier) {
+				return p.query, fmt.Errorf("at ORDER BY: expected expression")
+			}
+			p.query.OrderByItems = append(p.query.OrderByItems, identifier)
+			p.pop()
+			next := p.peek()
+			// Ascending or descending, default is ascending
+			if strings.ToUpper(next) == "ASC" {
+				p.pop()
+			} else if strings.ToUpper(next) == "DESC" {
+				p.query.Desc = true
+				p.pop()
+			}
+			next = p.peek()
+			if strings.ToUpper(next) == "LIMIT" {
+				p.step = stepLimit
+				continue
+			}
+			p.step = stepUsing
+		case stepLimit:
+			limitRWord := p.peek()
+			if strings.ToUpper(limitRWord) != "LIMIT" {
+				return p.query, fmt.Errorf("expected LIMIT")
+			}
+			p.pop()
+			p.step = stepCount
+		case stepCount:
+			identifier := p.peek()
+			if !isIdentifier(identifier) {
+				return p.query, fmt.Errorf("at LIMIT: expected count")
+			}
+			count, err := strconv.Atoi(identifier)
+			if err != nil || count <= 0 {
+				return p.query, fmt.Errorf("at LIMIT: expected count")
+			}
+			p.query.Count = count
+			p.pop()
+			p.step = stepUsing
+		case stepUsing:
+			usingRWord := p.peek()
+			if strings.ToUpper(usingRWord) != "USING" {
+				return p.query, fmt.Errorf("expected USING")
+			}
+			p.pop()
+			p.step = stepData
+		case stepData:
+			identifier := p.peek()
+			if !isIdentifier(identifier) {
+				return p.query, fmt.Errorf("at USING: expected data")
+			}
+			p.query.Data = identifier
+			p.pop()
+			p.step = stepRespond
+		case stepRespond:
+			respondRWord := p.peek()
+			if strings.ToUpper(respondRWord) != "RESPOND" {
+				return p.query, fmt.Errorf("expected RESPOND")
+			}
+			p.pop()
+			p.step = stepIn
+		case stepIn:
+			inRWord := p.peek()
+			if strings.ToUpper(inRWord) != "IN" {
+				return p.query, fmt.Errorf("expected IN")
+			}
+			p.pop()
+			p.step = stepMode
+		case stepMode:
+			identifier := p.peek()
+			if !isIdentifier(identifier) {
+				return p.query, fmt.Errorf("at RESPOND IN: expected mode")
+			}
+			p.query.Mode = identifier
+			p.pop()
 		}
 	}
 }
@@ -229,8 +326,8 @@ func (p *parser) popWhitespace() {
 }
 
 var reservedWords = []string{
-	"(", ")", ">=", "<=", "!=", ",", "=", ">", "<", "SELECT", "FROM", "FOR", "WHERE",
-	"ORDER", "BY", "DESC", "ASC", "LIMIT", "USING", "TESTED", "ON", "RESPOND", "IN",
+	"(", ")", ">=", "<=", "!=", ",", "=", ">", "<", "SELECT", "FROM", "WHERE",
+	"ORDER", "BY", "ASC", "DESC", "LIMIT", "USING", "RESPOND", "IN",
 }
 
 func (p *parser) peekWithLength() (string, int) {
@@ -291,6 +388,9 @@ func (p *parser) validate() error {
 			return fmt.Errorf("at WHERE: condition with empty right side operand")
 		}
 	}
+	if p.query.Count < 0 {
+		return fmt.Errorf("count cannot be negative")
+	}
 	return nil
 }
 
@@ -309,7 +409,7 @@ func isIdentifier(s string) bool {
 			return false
 		}
 	}
-	matched, _ := regexp.MatchString("[a-zA-Z_][a-zA-Z_0-9]*", s)
+	matched, _ := regexp.MatchString("[a-zA-Z_0-9][a-zA-Z_0-9]*", s)
 	return matched
 }
 

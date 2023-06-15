@@ -2,17 +2,15 @@ package motleyql
 
 // Query represents a parsed query
 type Query struct {
-	Type        Type
-	Fields      []string
-	ModelZoo    string
-	Task        string
-	Conditions  []Condition
-	OrderByItem string
-	Asc         bool
-	Count       uint
-	DataType    DataType
-	Data        []string
-	Mode        string
+	Type         Type
+	Fields       []string
+	ModelZoo     string
+	Conditions   []Condition
+	OrderByItems []string
+	Desc         bool
+	Count        int
+	Data         string
+	Mode         string
 }
 
 // Type is the type of SQL query, e.g. SELECT
