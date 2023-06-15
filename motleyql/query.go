@@ -1,7 +1,7 @@
 package motleyql
 
-// Query represents a parsed query
-type Query struct {
+// Plan represents a parsed query
+type Plan struct {
 	Type         Type
 	Fields       []string
 	ModelZoo     string

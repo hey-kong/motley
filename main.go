@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"motley/motleyql"
+	"github.com/hey-kong/motley/motleyql"
 )
 
 func main() {

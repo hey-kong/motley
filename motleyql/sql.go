@@ -8,18 +8,18 @@ import (
 )
 
 // Parse takes a string representing a SQL query and parses it into a Query struct. It may fail.
-func Parse(sqls string) (Query, error) {
+func Parse(sqls string) (Plan, error) {
 	qs, err := ParseMany([]string{sqls})
 	if len(qs) == 0 {
-		return Query{}, err
+		return Plan{}, err
 	}
 	return qs[0], err
 }
 
 // ParseMany takes a string slice representing many SQL queries and parses them into a Query struct slice.
 // It may fail. If it fails, it will stop at the first failure.
-func ParseMany(sqls []string) ([]Query, error) {
-	var qs []Query
+func ParseMany(sqls []string) ([]Plan, error) {
+	var qs []Plan
 	for _, sql := range sqls {
 		q, err := parse(sql)
 		if err != nil {
@@ -30,8 +30,8 @@ func ParseMany(sqls []string) ([]Query, error) {
 	return qs, nil
 }
 
-func parse(sql string) (Query, error) {
-	return (&parser{0, strings.TrimSpace(sql), stepType, Query{}, nil, ""}).parse()
+func parse(sql string) (Plan, error) {
+	return (&parser{0, strings.TrimSpace(sql), stepType, Plan{}, nil, ""}).parse()
 }
 
 type step int
@@ -63,12 +63,12 @@ type parser struct {
 	i               int
 	sql             string
 	step            step
-	query           Query
+	query           Plan
 	err             error
 	nextUpdateField string
 }
 
-func (p *parser) parse() (Query, error) {
+func (p *parser) parse() (Plan, error) {
 	q, err := p.doParse()
 	p.err = err
 	if p.err == nil {
@@ -78,7 +78,7 @@ func (p *parser) parse() (Query, error) {
 	return q, p.err
 }
 
-func (p *parser) doParse() (Query, error) {
+func (p *parser) doParse() (Plan, error) {
 	for {
 		if p.i >= len(p.sql) {
 			return p.query, p.err
