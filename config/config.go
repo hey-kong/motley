@@ -1,6 +1,12 @@
 package config
 
 const (
-	AccessKeyIDEnv  = "ACCESS_KEY_ID"
-	SecretAccessKey = "SECRET_ACCESS_KEY"
+	AccessKeyID     = ""
+	AccessKeySecret = ""
+	Endpoint        = ""
+	Bucket          = ""
+	KeyPrefix       = ""
+	WatchPath       = ""
+	PathPattern     = ".*[^swp]$"
+	WatchInterval   = 60
 )
