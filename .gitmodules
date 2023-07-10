@@ -1,0 +1,3 @@
+[submodule "bgtest/deeplabv3"]
+	path = bgtest/deeplabv3
+	url = git@github.com:hey-kong/ams.git
